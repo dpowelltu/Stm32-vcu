@@ -10,7 +10,9 @@ void OutlanderCharger::INIT(){
 }
 
 void OutlanderCharger::START(){
-	//m_sch_ptr->AddTask(OutlanderCharger::Update, 1000);
+	if(m_state==CHARGER_STATES::IDLE && GetProxState()!= 0){
+		m_state=CHARGER_STATES::INIT;
+	}
 }
 void OutlanderCharger::STOP(){
 
@@ -49,7 +51,7 @@ bool OutlanderCharger::ProcessCANMessage(uint32_t can_id,  uint32_t data[2]){
 }  
 
 void OutlanderCharger::Update(void){
-	static uint16_t x, timer, m_prox_state, prox, m_count, slow_flag_counter, slow_flag;
+	static uint16_t x, timer, m_prox_state, m_count, slow_flag_counter, slow_flag;
 
 	if(x==0){
 		x = 1;
@@ -94,43 +96,34 @@ void OutlanderCharger::Update(void){
      
     
   
-    prox = AnaIn::throttle1.Get();
-  
-    //requires a pull up resistor on the ADC input to allow us to read the prox circuit
-	// a pull up value of 1K???
-    if(prox < 200){
-       //connected, button not pressed 
-       m_prox_state = 2;
-      }
-    else if(prox < 400){
-      //connected, button pressed
-      m_prox_state=1;
-    }
-    else{
-      // not connected
-      m_prox_state=0;
-    }
+    m_prox_state = GetProxState();
   
   
     
-  
+   
     switch(m_state){
   
-      case CHARGER_STATES::IDLE:
+	  case CHARGER_STATES::IDLE:
+			m_charger_evse_req = 0;
+	
+		break;
+  
+  
+      case CHARGER_STATES::INIT:
         if( m_prox_state == 1){
-          m_state=CHARGER_STATES::INIT;
+          m_state=CHARGER_STATES::EVSE_STAGE1;
           //digitalWrite(CHARGER_POWER, HIGH);
           m_charger_evse_req=3;
-          
+          timer = 0;
         }
       break;
   
       
-      case CHARGER_STATES::INIT:
+      case CHARGER_STATES::EVSE_STAGE1:
         // start sequence for pulling in EVSE
         if(timer>10){
           m_charger_evse_req=0x16;
-          m_state=CHARGER_STATES::EVSE_STAGE1;
+          m_state=CHARGER_STATES::EVSE_STAGE2;
           //digitalWrite(CHARGER_STATUS_LED, HIGH);
 
           //SerialUSB.print("bat_voltage ");
@@ -140,11 +133,11 @@ void OutlanderCharger::Update(void){
       break;
   
       
-      case CHARGER_STATES::EVSE_STAGE1:
+      case CHARGER_STATES::EVSE_STAGE2:
         //EV
         if(timer>10){
           m_charger_evse_req=0xb6;
-          m_state=CHARGER_STATES::EVSE_STAGE2;
+          m_state=CHARGER_STATES::EVSE_STAGE3;
 
           //SerialUSB.print("evse_pilot ");
           //SerialUSB.println(evse_pilot);
@@ -152,7 +145,7 @@ void OutlanderCharger::Update(void){
       break;
   
       
-      case CHARGER_STATES::EVSE_STAGE2:
+      case CHARGER_STATES::EVSE_STAGE3:
         
         if(timer>10){
 

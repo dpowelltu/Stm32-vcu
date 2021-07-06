@@ -64,46 +64,10 @@ enum DEVICE_TYPES{
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static void Ms200Task(void)
 {
-    int opmode = Param::GetInt(Param::opmode);
-    if(targetVehicle == _vehmodes::BMW_E65) BMW_E65Class::GDis();//needs to be every 200ms
-    if(targetCharger == _chgmodes::Volt_Ampera)
-    {
-        //to be done
-    }
-
-    if(targetCharger == _chgmodes::Off)
-    {
-        chargeMode = false;
-    }
-
-    if(targetCharger == _chgmodes::HV_ON)
-    {
-      if(opmode != MOD_RUN)  chargeMode = true;
-    }
-    if(targetCharger == _chgmodes::EXT_CAN)
-    {
-      // chargeMode = false;  //this mode accepts a request for HV via CAN from a charger controller e.g. Tesla Gen2/3 M3 PCS etc.
-                            //request expected on id 0x108
-                            //response with HV on given on id 0x109
-     if(opmode != MOD_RUN)
-        {
-    if(chargerClass::HVreq==true) chargeMode = true;
-    if(chargerClass::HVreq==false) chargeMode = false;
-        }
-
-
-    }
-
-    if(targetCharger == _chgmodes::EXT_DIGI)
-    {
-        chargeMode = false;             //this mode accepts a request for HV via a 12v inputfrom a charger controller e.g. Tesla Gen2/3 M3 PCS etc.
-                                        //response with a 12v output signal on a digital output.
-                                        //will be implemented on release HW.
-
-
-
-
-    }
+   for(int i =0; i<4; i++){
+		if(devices[i]->m_time_base == 200)
+			devices[i]->Update();
+	}
 }
 
 
@@ -113,277 +77,30 @@ static void Ms200Task(void)
 
 static void Ms100Task(void)
 {
-    DigIo::led_out.Toggle();
-    iwdg_reset();
-    s32fp cpuLoad = FP_FROMINT(scheduler->GetCpuLoad());
-    Param::SetFlt(Param::cpuload, cpuLoad / 10);
-    Param::SetInt(Param::lasterr, ErrorMessage::GetLastError());
-
-    utils::SelectDirection(targetVehicle, E65Vehicle);
-    utils::ProcessUdc(oldTime, GetInt(Param::speed));
-
-    if (targetInverter == _invmodes::Prius_Gen3)
-    {
-        gs450Inverter.SetPrius();//select prius inverter mode
-        gs450Inverter.run100msTask(Lexus_Gear, Lexus_Oil);
-        Param::SetInt(Param::INVudc,gs450Inverter.dc_bus_voltage);//display inverter derived dc link voltage on web interface
-    }
-
-  else if (targetInverter == _invmodes::GS450H)
-    {
-        gs450Inverter.SetGS450H();//select gs450h inverter mode
-        gs450Inverter.run100msTask(Lexus_Gear, Lexus_Oil);
-        Param::SetInt(Param::INVudc,gs450Inverter.dc_bus_voltage);//display inverter derived dc link voltage on web interface
-    }
-    else
-    {
-        gs450Inverter.setTimerState(false);
-    }
-
-
-    if (targetInverter == _invmodes::Leaf_Gen1)
-    {
-        LeafINV::Send100msMessages();
-        Param::SetInt(Param::tmphs,LeafINV::inv_temp);//send leaf temps to web interface
-        Param::SetInt(Param::tmpm,LeafINV::motor_temp);
-        Param::SetInt(Param::InvStat, LeafINV::error); //update inverter status on web interface
-        Param::SetInt(Param::INVudc,(LeafINV::voltage/2));//display inverter derived dc link voltage on web interface
-    }
-
-    if(targetVehicle == _vehmodes::BMW_E65)
-    {
-        if (E65Vehicle.getTerminal15())
-        {
-            E65Vehicle.DashOn();
-            Param::SetInt(Param::T15Stat,1);
-        }
-        else
-        {
-            Param::SetInt(Param::T15Stat,0);
-        }
-    }
-    else
-    {
-        E65Vehicle.DashOff();
-    }
-
-
-    if(targetVehicle==VAG) Can_VAG::SendVAG100msMessage();
-
-
-    if (!chargeMode && rtc_get_counter_val() > 100)
-    {
-        if (Param::GetInt(Param::canperiod) == CAN_PERIOD_100MS)
-            can2->SendAll();
-    }
-    int16_t IsaTemp=ISA::Temperature;
-    Param::SetInt(Param::tmpaux,IsaTemp);
-
-    chargerClass::Send100msMessages();
+	MainSystemTask();
+	
+    for(int i =0; i<4; i++){
+		if(devices[i]->m_time_base == 100)
+			devices[i]->Update();
+	}
 }
 
 
 static void Ms10Task(void)
 {
-    int16_t previousSpeed=Param::GetInt(Param::speed);
-    int16_t speed = 0;
-    s32fp torquePercent;
-    int opmode = Param::GetInt(Param::opmode);
-    int newMode = MOD_OFF;
-    int stt = STAT_NONE;
-    ErrorMessage::SetTime(rtc_get_counter_val());
-
-
-    if (Param::GetInt(Param::opmode) == MOD_RUN)
-    {
-        torquePercent = utils::ProcessThrottle(previousSpeed, can1);
-        FP_TOINT(torquePercent);
-        if(ABS(previousSpeed)>=maxRevs) torquePercent=0;//Hard cut limiter:)
-    }
-    else
-    {
-        torquePercent = 0;
-        utils::displayThrottle();//just displays pot and pot2 when not in run mode to allow throttle cal
-    }
-
-    if (opmode != MOD_OFF)  //send leaf messages only when not in off mode.
-    {
-
-    if(targetInverter == _invmodes::Leaf_Gen1)
-    {
-        LeafINV::Send10msMessages();//send leaf messages on can1 if we select leaf
-        speed = LeafINV::speed/2;//set motor rpm on interface
-        torquePercent = utils::change(torquePercent, 0, 3040, 0, 2047); //map throttle for Leaf inverter
-        LeafINV::SetTorque(Param::Get(Param::dir),torquePercent);//send direction and torque request to inverter
-
-    }
-
-     }
-
-    if(targetInverter == _invmodes::GS450H)
-    {
-        gs450Inverter.setTorqueTarget(torquePercent);//map throttle for GS450HClass inverter
-        speed = GS450HClass::mg2_speed;//return MG2 rpm as speed param
-    }
-
-       if(targetInverter == _invmodes::Prius_Gen3)
-    {
-        gs450Inverter.setTorqueTarget(torquePercent);//map throttle for GS450HClass inverter
-        speed = GS450HClass::mg2_speed;//return MG2 rpm as speed param
-    }
-
-    Param::SetInt(Param::speed, speed);
-    utils::GetDigInputs(can2);
-
-    // Send CAN 2 (Vehicle CAN) messages if necessary for vehicle integration.
-    if (targetVehicle == BMW_E39)
-    {
-        // FIXME: Note this is essentially the same as E46. 0x545 should be slightly different. Refactor.
-        Can_E39::SendE39(speed, Param::Get(Param::tmphs)); //send rpm and heatsink temp to e39 cluster
-    }
-    else if (targetVehicle == BMW_E46)
-    {
-        uint16_t tempGauge = utils::change(Param::Get(Param::tmphs),15,80,88,254); //Map to e46 temp gauge
-        //Messages required for E46
-        Can_E46::Msg316(speed);//send rpm to e46 dash
-        Can_E46::Msg329(tempGauge);//send heatsink temp to E64 dash temp gauge
-        Can_E46::Msg545();
-    }
-    else if (targetVehicle == _vehmodes::BMW_E65)
-    {
-        BMW_E65Class::absdsc(Param::Get(Param::din_brake));
-        if(E65Vehicle.getTerminal15())
-            BMW_E65Class::Tacho(Param::GetInt(Param::speed));//only send tach message if we are starting
-    }
-
-    //////////////////////////////////////////////////
-    //            MODE CONTROL SECTION              //
-    //////////////////////////////////////////////////
-    s32fp udc = utils::ProcessUdc(oldTime, GetInt(Param::speed));
-    stt |= Param::GetInt(Param::potnom) <= 0 ? STAT_NONE : STAT_POTPRESSED;
-    stt |= udc >= Param::Get(Param::udcsw) ? STAT_NONE : STAT_UDCBELOWUDCSW;
-    stt |= udc < Param::Get(Param::udclim) ? STAT_NONE : STAT_UDCLIM;
-
-
-    if (opmode==MOD_OFF && (Param::GetBool(Param::din_start) || E65Vehicle.getTerminal15() || chargeMode))//on detection of ign on or charge mode enable we commence prechage and go to mode precharge
-    {
-      if(chargeMode==false)
-      {
-        DigIo::inv_out.Set();//inverter power on but not if we are in charge mode!
-      }
-        DigIo::prec_out.Set();//commence precharge
-        opmode = MOD_PRECHARGE;
-        Param::SetInt(Param::opmode, opmode);
-        oldTime=rtc_get_counter_val();
-    }
-
-
-
-    if(targetVehicle == _vehmodes::BMW_E65)
-    {
-
-        if(opmode==MOD_PCHFAIL && E65Vehicle.getTerminal15()==false)//use T15 status to reset
-        {
-            opmode = MOD_OFF;
-            Param::SetInt(Param::opmode, opmode);
-        }
-    }
-    else
-    {
-        if(opmode==MOD_PCHFAIL && !Param::GetBool(Param::din_start)) //use start input to reset.
-        {
-            opmode = MOD_OFF;
-            Param::SetInt(Param::opmode, opmode);
-        }
-    }
-
-
-
-        if(opmode==MOD_PCHFAIL && chargeMode)
-        {
-        //    opmode = MOD_OFF;
-        //    Param::SetInt(Param::opmode, opmode);
-        }
-
-
-    /* switch on DC switch if
-     * - throttle is not pressed
-     * - start pin is high
-     * - udc >= udcsw
-     * - udc < udclim
-     */
-    if ((stt & (STAT_POTPRESSED | STAT_UDCBELOWUDCSW | STAT_UDCLIM)) == STAT_NONE)
-    {
-
-        if (Param::GetBool(Param::din_start) || E65Vehicle.getTerminal15())
-        {
-            newMode = MOD_RUN;
-        }
-
-         if (chargeMode)
-        {
-            newMode = MOD_CHARGE;
-        }
-
-
-        stt |= opmode != MOD_OFF ? STAT_NONE : STAT_WAITSTART;
-    }
-
-    Param::SetInt(Param::status, stt);
-
-    if(opmode == MOD_RUN) //only shut off via ign command if not in charge mode
-    {
-
-    if(targetVehicle == _vehmodes::BMW_E65)
-    {
-        if(!E65Vehicle.getTerminal15()) opmode = MOD_OFF; //switch to off mode via CAS command in an E65
-    }
-    else
-    {
-        //switch to off mode via igntition digital input. To be implemented in release HW
-        if(!Param::GetBool(Param::T15Digi)) opmode = MOD_OFF;
-    }
-    }
-
-  if(opmode == MOD_CHARGE && !chargeMode) opmode = MOD_OFF; //if we are in charge mode and commdn charge mode off then go to mode off.
-
-    if (newMode != MOD_OFF)
-    {
-        DigIo::dcsw_out.Set();
-        DigIo::gp_out1.Clear();
-        Param::SetInt(Param::opmode, newMode);
-        ErrorMessage::UnpostAll();
-
-    }
-
-
-    if (opmode == MOD_OFF)
-    {
-        DigIo::dcsw_out.Clear();
-        DigIo::gp_out1.Clear();
-        DigIo::prec_out.Clear();
-        DigIo::inv_out.Clear();//inverter power off
-        Param::SetInt(Param::opmode, newMode);
-        if(targetVehicle == _vehmodes::BMW_E65) E65Vehicle.DashOff();
-    }
+    for(int i =0; i<4; i++){
+		if(devices[i]->m_time_base == 10)
+			devices[i]->Update();
+	}
 }
 
 
 static void Ms1Task(void)
 {
-    if(targetInverter == _invmodes::GS450H)
-    {
-        // Send direction from this context.
-        // Torque updated in 10ms loop.
-        gs450Inverter.UpdateHTMState1Ms(Param::Get(Param::dir));
-    }
-
-        if(targetInverter == _invmodes::Prius_Gen3)
-    {
-        // Send direction from this context.
-        // Torque updated in 10ms loop.
-        gs450Inverter.UpdateHTMState1Ms(Param::Get(Param::dir));
-    }
+    for(int i =0; i<4; i++){
+		if(devices[i]->m_time_base == 1)
+			devices[i]->Update();
+	}
 }
 
 

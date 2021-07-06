@@ -8,6 +8,8 @@ enum class CHARGER_STATES{
 			INIT,
 			EVSE_STAGE1,
 			EVSE_STAGE2,
+			EVSE_STAGE3,
+
 			CC_CHARGE,
 			CV_CHARGE,
 			COMPLETE,
@@ -51,12 +53,9 @@ class OutlanderCharger: public vcu_device{
 		
 		bool RequiresStart()override{ 
 		
-			if(AnaIn::throttle1.Get()<200){//should be another analogue input, this is just for test! 
-				return true;
-			}
-			else{
-				return false; 
-			}
+			
+			return (GetProxState()==2); 
+			
 		
 		}
 
@@ -69,7 +68,25 @@ class OutlanderCharger: public vcu_device{
 		
 		void sendEVSEData(uint16_t , uint16_t );
 		void sendChargerSPData(uint16_t , uint16_t );
-    
+		
+		uint8_t GetProxState(){
+			uint16_t prox = AnaIn::GP_analog1.Get();
+  
+			//requires a pull up resistor on the ADC input to allow us to read the prox circuit
+			// a pull up value of 1K???
+			if(prox < 200){
+			   //connected, button not pressed 
+			   return 2;
+			  }
+			else if(prox < 400){
+			  //connected, button pressed
+			  return 1;
+			}
+			else{
+			  // not connected
+			  return 0;
+			}
+		}
     
 };
 
