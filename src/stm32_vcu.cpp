@@ -49,6 +49,17 @@ BMW_E65Class E65Vehicle;
 GS450HClass gs450Inverter;
 chargerClass chgtype;
 
+void MainSystemTask(void);
+
+vcu_device *devices[4]={0};
+
+enum DEVICE_TYPES{
+	VEHICLE,
+	CHARGER,
+	INVERTER,
+	SHUNT	
+};
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static void Ms200Task(void)
@@ -409,52 +420,15 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
 
 static void CanCallback(uint32_t id, uint32_t data[2]) //This is where we go when a defined CAN message is received.
 {
-
-    switch (id)
-    {
-    case 0x521:
-        ISA::handle521(data);//ISA CAN MESSAGE
-        break;
-    case 0x522:
-        ISA::handle522(data);//ISA CAN MESSAGE
-        break;
-    case 0x523:
-        ISA::handle523(data);//ISA CAN MESSAGE
-        break;
-    case 0x524:
-        ISA::handle524(data);//ISA CAN MESSAGE
-        break;
-    case 0x525:
-        ISA::handle525(data);//ISA CAN MESSAGE
-        break;
-    case 0x526:
-        ISA::handle526(data);//ISA CAN MESSAGE
-        break;
-    case 0x527:
-        ISA::handle527(data);//ISA CAN MESSAGE
-        break;
-    case 0x528:
-        ISA::handle528(data);//ISA CAN MESSAGE
-        break;
-    case 0x108:
-        chargerClass::handle108(data);// HV request from an external charger
-        break;
-    default:
-        if (targetInverter == _invmodes::Leaf_Gen1)
-        {
-            // process leaf inverter return messages
-            LeafINV::DecodeCAN(id, data);
-        }
-        if(targetVehicle == _vehmodes::BMW_E65)
-        {
-            // process BMW E65 CAS (Conditional Access System) return messages
-            E65Vehicle.Cas(id, data);
-            // process BMW E65 CAN Gear Stalk messages
-            E65Vehicle.Gear(id, data);
-        }
-
-        break;
-    }
+for(int i =0; i<4; i++){
+		if(devices[i]!=0){
+			if(devices[i]->RequiresCAN()){
+				if(devices[i]->ProcessCANMessage(id,data))
+					break;
+			}
+		}
+	}
+  
 }
 
 
@@ -497,28 +471,53 @@ extern "C" int main(void)
 
     // Set up CAN 1 callback and messages to listen for
     c1.SetReceiveCallback(CanCallback);
-    c1.RegisterUserMessage(0x1DA);//Leaf inv msg
-    c1.RegisterUserMessage(0x55A);//Leaf inv msg
-    c1.RegisterUserMessage(0x521);//ISA MSG
-    c1.RegisterUserMessage(0x522);//ISA MSG
-    c1.RegisterUserMessage(0x523);//ISA MSG
-    c1.RegisterUserMessage(0x524);//ISA MSG
-    c1.RegisterUserMessage(0x525);//ISA MSG
-    c1.RegisterUserMessage(0x526);//ISA MSG
-    c1.RegisterUserMessage(0x527);//ISA MSG
-    c1.RegisterUserMessage(0x528);//ISA MSG
-
-    // Set up CAN 2 (Vehicle CAN) callback and messages to listen for.
+     // Set up CAN 2 (Vehicle CAN) callback and messages to listen for.
     c2.SetReceiveCallback(CanCallback);
-    c2.RegisterUserMessage(0x130);//E65 CAS
-    c2.RegisterUserMessage(0x192);//E65 Shifter
-    c2.RegisterUserMessage(0x108);//Charger HV request
+ 
 
     //can = &c; // FIXME: What about CAN2?
 
     Stm32Scheduler s(TIM3); //We never exit main so it's ok to put it on stack
     scheduler = &s;
 
+			//create the objects for the charger, inverter and vehicle
+	BasicVehicle myCar;
+	OutlanderCharger myCharger;
+    GS450HInverter myInverter;
+	
+	
+	
+	devices[VEHICLE]=&myCar;
+	devices[CHARGER]=&myCharger;
+	devices[INVERTER]=&myInverter;
+	devices[SHUNT]=0;
+	
+	//register the CAN interface!
+	myCar.Register(&c2);
+	myCharger.Register(&c1);
+	myInverter.Register(&c1);
+    
+	
+	//Initialise the VCU main Task
+	//The VCU Task will need objects for the following: Vehicle, Inverter, Charger
+	
+	//myCharger.INIT();
+	//for(int i =0; i<4; i++)
+	//	if(devices[i]!=0)
+	//		devices[i]->INIT();
+	
+	myInverter.setTorque(0);
+	
+	//Start Vehicle, Charger and Inverter Tasks if required! 
+
+	for(int i =0; i<4; i++){
+		if(devices[i]->m_time_base==1){
+		s.AddTask(Ms1Task, 1); //only start 1mS task if needed!
+		break;
+		}
+	}
+	
+	
     s.AddTask(Ms1Task, 1);
     s.AddTask(Ms10Task, 10);
     s.AddTask(Ms100Task, 100);
@@ -533,3 +532,125 @@ extern "C" int main(void)
 
     return 0;
 }
+
+
+enum VCU_STATES{
+SYSTEM_INIT_STATE,
+SYSTEM_LOW_POWER_IDLE_STATE,
+
+
+SYSTEM_PRE_CHARGE_B_MINUS_CHECK, // should see zero current as we close pre-charge relay, if a B- contactor used
+SYSTEM_PRE_CHARGE_TEST, //should see zero current as we close B- contactor
+SYSTEM_PRE_CHARGE_ACTIVE, //close Pre-charge contactor
+SYSTEM_PRE_CHARGE_COMPLETE,//close B+ Contactor
+SYSTEM_PRE_CHARGE_FAULT,
+
+
+
+SYSTEM_HV_READY, //waiting for throttle == 0
+
+SYSTEM_DISCONNECT_CONTACTORS,
+SYSTEM_DISCONNECT_WAIT, //return to low power state
+
+SYSTEM_DISABLED,
+
+SYSTEM_GENERAL_FAULT
+
+} ;
+
+enum{
+	SYSTEM_IDLE,
+	SYSTEM_CHARGING,
+	SYSTEM_DRIVING
+};
+
+//called every 100mS
+void MainSystemTask(void){
+	static uint16_t state = 0, timer = 0, system_mode = 0;
+	
+		switch(state){
+			
+			case SYSTEM_INIT_STATE:
+				devices[CHARGER]->INIT();
+				devices[VEHICLE]->INIT();
+				devices[INVERTER]->INIT();
+				//devices[SHUNT]->INIT();
+				state++;
+				
+			break;
+			case SYSTEM_LOW_POWER_IDLE_STATE:
+				
+				if(devices[CHARGER]->RequiresStart()){
+					devices[CHARGER]->START(); //signal to the charger we are starting
+					state++;
+					system_mode = SYSTEM_CHARGING;
+				}
+				
+				else if(devices[VEHICLE]->RequiresStart()){
+					devices[VEHICLE]->START(); //signal to the vehicle we are starting
+					devices[INVERTER]->START(); //signal to the inverter we are starting
+					state++;
+					system_mode = SYSTEM_DRIVING;
+				}
+				
+			break;
+			
+			case SYSTEM_PRE_CHARGE_B_MINUS_CHECK:	  // should see zero current as we close pre-charge relay, if a B- contactor used
+			
+			
+			break;
+						
+			case SYSTEM_PRE_CHARGE_TEST: //should see zero current as we close B- contactor
+			
+			
+			break;
+						
+			case SYSTEM_PRE_CHARGE_ACTIVE: //close Pre-charge contactor
+			
+			break;			
+			
+			case SYSTEM_PRE_CHARGE_COMPLETE://close B+ Contactor
+			
+			break;			
+			
+			case SYSTEM_PRE_CHARGE_FAULT:
+
+			break;
+			
+			case SYSTEM_HV_READY:
+				//?
+				switch(system_mode){
+					case SYSTEM_CHARGING:
+						if(devices[CHARGER]->STOPPED()) //charge cycle ended
+							state++;
+					break;
+					
+					case SYSTEM_DRIVING:
+						if(devices[VEHICLE]->STOPPED()) //drive cycle ended
+							state++;					
+					break;
+					
+					default:
+						state++;
+					break;
+					
+				}
+				
+			break;			
+
+			case SYSTEM_DISCONNECT_CONTACTORS:
+				timer = 10;
+			break;			
+
+			case SYSTEM_DISCONNECT_WAIT: //return to low power state
+				if(timer==0)state=SYSTEM_LOW_POWER_IDLE_STATE;
+			break;		
+			
+		}
+	
+	
+	if(timer>0)timer--;
+	
+	
+}
+

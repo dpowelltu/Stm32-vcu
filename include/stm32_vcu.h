@@ -27,3 +27,8 @@
 #include "throttle.h"
 #include "utils.h"
 #include "charger.h"
+#include "OutlanderCharger.h"
+#include "BasicVehicle.h"
+#include "BasicInverter.h"
+#include "PriusInverter.h"
+#include "GS450HInverter.h"
