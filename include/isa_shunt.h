@@ -1,71 +1,104 @@
-#ifndef SimpleISA_h
-#define SimpleISA_h
+#ifndef ISA_SHUNT_H
+#define ISA_SHUNT_H
 
-/*  This library supports the ISA Scale IVT Modular current/voltage sensor device.  These devices measure current, up to three voltages, and provide temperature compensation.
-    This library was written by Jack Rickard of EVtv - http://www.evtv.me copyright 2016
-    You are licensed to use this library for any purpose, commercial or private,
-    without restriction.
+#include <libopencm3/stm32/usart.h>
+#include <libopencm3/stm32/dma.h>
 
-*/
-
-#include <stdint.h>
-#include "my_fp.h"
-
-class ISA
-{
-
-    ISA();
-    ~ISA();
+#include "vcu_device.h"
 
 
+enum class ISA_STATES{
+			IDLE,
+			INIT,
+			START_CONFIGIRATION,
+			LOAD_CONFIG,
+			STORE_CONFIG,
+			SEND_START,
+			CONFIGURED,
+			FINISHED,
+			FAULT
+		};
+		
+		
+class ISA_Shunt: public vcu_device{
+    
+    private:
+        ISA_STATES m_state;
+		uint8_t m_config_index;
+		
+		void STOP_MSG();
+		void STORE_MSG();
+		void START_MSG();
+		void RESTART_MSG();
+		void DEFAULT_MSG();
+		void CONFIG_MSG(uint8_t );
+	
+	protected:
+		
+		bool firstframe=true;
 
-public:
+		int32_t Amperes;
+		int32_t Ah;
+		int32_t KW;
+		int32_t KWh;
+		int32_t Voltage=0;
+		int32_t Voltage2=0;
+		int32_t Voltage3=0;
+		int16_t Temperature;
+		uint32_t framecount;
 
-    static		void initialize();
-    static		void initCurrent();
-    static		void sendSTORE();
-    static		void STOP();
-    static		void START();
-    static		void RESTART();
-    static		void deFAULT();
+		
+    
+    public:
+		
+		ISA_Shunt(){
+			m_time_base=200;
+		}
+		
+	
+		
+        void INIT()override{
+			//init DMA etc? 
+			
+			//turn on power to inverter?
+			
+		}
+        void START()override{
+			
+		}
+        void STOP()override{
+	
+		}		
+		
+        bool STANDBY ()override{return false;}
+        bool STARTING()override{return false;}
+        bool RUNNING ()override{return false;}
+        bool STOPPING ()override{return false;}
+        bool STOPPED ()override{return false;}
+		
+		
+		
+		
+		bool RequiresStart()override{ return false; }
+		bool RequiresCAN()override{ return true; }
+		
+		//These abstract functions need to be provided by a childclass, ie PriusInverter, GS450HInverter etc... 
+		virtual uint16_t getSpeed()=0;
+		virtual void setTorque(uint16_t)=0;
+		virtual void ProcessHTMFrame()=0;
+		virtual void ProcessMTHFrame()=0;
+			
+		bool ProcessCANMessage(uint32_t can_id, uint32_t data[2]) override;
+		
+		void deFAULT();
+		void RESTART();
+		
+		
+	
+			
+		void Update()override;
 
-    static		int32_t Voltage;
-    static		int32_t Voltage2;
-    static		int32_t Voltage3;
-    static		int16_t Temperature;
-    static      int32_t Amperes;   // Floating point with current in Amperes
-    static      int32_t KW;
-    static      int32_t KWh;
-    static      int32_t Ah;
+		
+	};
 
-
-    static void handle521(uint32_t data[2]);
-    static void handle522(uint32_t data[2]);
-    static void handle523(uint32_t data[2]);
-    static void handle524(uint32_t data[2]);
-    static void handle525(uint32_t data[2]);
-    static void handle526(uint32_t data[2]);
-    static void handle527(uint32_t data[2]);
-    static void handle528(uint32_t data[2]);
-
-
-
-
-
-private:
-
-    static		unsigned long elapsedtime;
-    static		double  ampseconds;
-    static		int milliseconds ;
-    static		int seconds;
-    static		int minutes;
-    static		int hours;
-    static		char buffer[9];
-    static		char bigbuffer[90];
-
-
-
-
-};
-
-#endif /* SimpleISA_h */
+#endif
