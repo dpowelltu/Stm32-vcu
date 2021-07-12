@@ -63,7 +63,7 @@ enum DEVICE_TYPES{
 	SHUNT	
 };
 
-#define NUM_DEVICES 3
+#define NUM_DEVICES 4
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static void Ms200Task(void)
@@ -212,19 +212,19 @@ extern "C" int main(void)
 	BasicVehicle myCar;
 	OutlanderCharger myCharger;
     GS450HInverter myInverter;
-	
+	ISA_Shunt myShunt;
 	
 	
 	devices[VEHICLE]=&myCar;
 	devices[CHARGER]=&myCharger;
 	devices[INVERTER]=&myInverter;
-	devices[SHUNT]=0;
+	devices[SHUNT]=&myShunt;
 	
 	//register the CAN interface!
 	myCar.Register(&c2);
 	myCharger.Register(&c);
 	myInverter.Register(&c);
-    
+    myShunt.Register(&c);
 	
 	//Initialise the VCU main Task
 	//The VCU Task will need objects for the following: Vehicle, Inverter, Charger

@@ -54,7 +54,7 @@ void OutlanderCharger::Update(void){
 
 	if(x==0){
 		x = 10;
-		DigIo::led_out.Toggle();
+		
 	}
 	else{
 		x--;
@@ -65,15 +65,15 @@ void OutlanderCharger::Update(void){
 
 
   if(m_count==5){
-    sendChargerSPData(m_charger_voltage_sp,m_charger_curret_sp );
+    //sendChargerSPData(m_charger_voltage_sp,m_charger_curret_sp );
   }
   else{
-    sendEVSEData(m_charger_evse_req,m_charger_hb);
+    //sendEVSEData(m_charger_evse_req,m_charger_hb);
   }
 
   if(m_count > 10){
     
-    Param::SetInt(Param::charger_state, (int)m_state);
+    
     /*
     if(flag){
         flag = 0;

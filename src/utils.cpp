@@ -173,28 +173,30 @@ void utils::SelectDirection(_vehmodes targetVehicle, BMW_E65Class E65Vehicle)
 
 s32fp utils::ProcessUdc(uint32_t oldTime, int motorSpeed)
 {
+	
     // FIXME: 32bit integer?
-    int32_t udc = FP_FROMINT(ISA::Voltage)/1000;//get voltage from isa sensor and post to parameter database
+    int32_t udc = 0;//FP_FROMINT(ISA::Voltage)/1000;//get voltage from isa sensor and post to parameter database
     Param::SetFlt(Param::udc, udc);
-    int32_t udc2 = FP_FROMINT(ISA::Voltage2)/1000;//get voltage from isa sensor and post to parameter database
+    int32_t udc2 = 0;//FP_FROMINT(ISA::Voltage2)/1000;//get voltage from isa sensor and post to parameter database
     Param::SetFlt(Param::udc2, udc2);
-    int32_t udc3 = FP_FROMINT(ISA::Voltage3)/1000;//get voltage from isa sensor and post to parameter database
+    int32_t udc3 = 0;//FP_FROMINT(ISA::Voltage3)/1000;//get voltage from isa sensor and post to parameter database
     Param::SetFlt(Param::udc3, udc3);
-    int32_t idc = FP_FROMINT(ISA::Amperes)/1000;//get current from isa sensor and post to parameter database
+    int32_t idc = 0;//FP_FROMINT(ISA::Amperes)/1000;//get current from isa sensor and post to parameter database
     Param::SetFlt(Param::idc, idc);
-    int32_t kw = FP_FROMINT(ISA::KW)/1000;//get power from isa sensor and post to parameter database
+    int32_t kw = 0;//FP_FROMINT(ISA::KW)/1000;//get power from isa sensor and post to parameter database
     Param::SetFlt(Param::power, kw);
-    int32_t kwh = FP_FROMINT(ISA::KWh)/1000;//get kwh from isa sensor and post to parameter database
+    int32_t kwh = 0;//FP_FROMINT(ISA::KWh)/1000;//get kwh from isa sensor and post to parameter database
     Param::SetFlt(Param::KWh, kwh);
-    int32_t Amph = FP_FROMINT(ISA::Ah)/3600;//get Ah from isa sensor and post to parameter database
+    int32_t Amph = 0;//FP_FROMINT(ISA::Ah)/3600;//get Ah from isa sensor and post to parameter database
     Param::SetFlt(Param::AMPh, Amph);
-    s32fp udclim = Param::Get(Param::udclim);
-    s32fp udcsw = Param::Get(Param::udcsw);
+    s32fp udclim = 0;//Param::Get(Param::udclim);
+    s32fp udcsw = 0;//Param::Get(Param::udcsw);
 
     s32fp deltaVolts1 = ABS((udc3/2)-udc2);
     s32fp deltaVolts2 = ABS((udc2+udc3)-udc);
     Param::SetFlt(Param::deltaV, MAX(deltaVolts1, deltaVolts2));
-
+	
+	
     // Currently unused parameters:
     // s32fp udcmin = Param::Get(Param::udcmin);
     // s32fp udcmax = Param::Get(Param::udcmax);
@@ -291,7 +293,7 @@ void utils::displayThrottle()
 void CalcSOC()
 {
 int32_t Capacity_Parm = Param::GetInt(Param::BattCap);
-int32_t kwh_Used = FP_FROMINT(ISA::KWh);    //grab actual Wh from isa shunt
+int32_t kwh_Used = 0; //FP_FROMINT(ISA::KWh);    //grab actual Wh from isa shunt
 if(kwh_Used<0)
 {
     NetWh = Capacity_Parm - kwh_Used;
