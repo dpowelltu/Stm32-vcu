@@ -24,32 +24,32 @@ bool ISA_Shunt::ProcessCANMessage(uint32_t can_id, uint32_t data[2]){
 			uint8_t* bytes;
 			
 			switch(can_id){
-				case 521:
+				case 0x521:
 					bytes = (uint8_t*)data;// arrgghhh this converts the two 32bit array into bytes. See comments are useful:)
 					Amperes = ((bytes[5] << 24) | (bytes[4] << 16) | (bytes[3] << 8) | (bytes[2]));
 					return true;
 				break;
 				
-				case 522:
+				case 0x522:
 					bytes = (uint8_t*)data;// arrgghhh this converts the two 32bit array into bytes. See comments are useful:)
 					Voltage=((bytes[5] << 24) | (bytes[4] << 16) | (bytes[3] << 8) | (bytes[2]));
 					return true;
 				break;
 				
-				case 523:
+				case 0x523:
 					bytes = (uint8_t*)data;// arrgghhh this converts the two 32bit array into bytes. See comments are useful:)
 					Voltage2 = (uint32_t)((bytes[5] << 24) | (bytes[4] << 16) | (bytes[3] << 8) | (bytes[2]));
 					return true;
 						break;
 
-				case 524:
+				case 0x524:
 					bytes = (uint8_t*)data;// arrgghhh this converts the two 32bit array into bytes. See comments are useful:)
 					Voltage3 = (uint32_t)((bytes[5] << 24) | (bytes[4] << 16) | (bytes[3] << 8) | (bytes[2]));
 
 					return true;
 				break;
 
-				case 525:
+				case 0x525:
 
 					bytes = (uint8_t*)data;// arrgghhh this converts the two 32bit array into bytes. See comments are useful:)
 					framecount++;
@@ -63,19 +63,19 @@ bool ISA_Shunt::ProcessCANMessage(uint32_t can_id, uint32_t data[2]){
 
 
 
-				case 526:
+				case 0x526:
 					bytes = (uint8_t*)data;// arrgghhh this converts the two 32bit array into bytes. See comments are useful:)
 					KW = (int32_t)((bytes[5] << 24) | (bytes[4] << 16) | (bytes[3] << 8) | (bytes[2]));
 					return true;
 					break;
 
-				case 527:
+				case 0x527:
 					bytes = (uint8_t*)data;// arrgghhh this converts the two 32bit array into bytes. See comments are useful:)
 					Ah = (bytes[5] << 24) | (bytes[4] << 16) | (bytes[3] << 8) | (bytes[2]);
 					return true;
 					break;
 
-				case 528:
+				case 0x528:
 					bytes = (uint8_t*)data;// arrgghhh this converts the two 32bit array into bytes. See comments are useful:)
 					KWh=((bytes[5] << 24) | (bytes[4] << 16) | (bytes[3] << 8) | (bytes[2]));
 					return true;
@@ -266,7 +266,7 @@ void ISA_Shunt::Update(){
 	
 	Param::SetInt(Param::charger_state, (int)m_state);
 	
-	DigIo::led_out.Toggle();
+	
 	
 	switch(m_state){
 		case ISA_STATES::IDLE:

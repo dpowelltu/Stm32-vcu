@@ -153,11 +153,11 @@ extern void parm_Change(Param::PARAM_NUM paramNum)
 
 static void CanCallback(uint32_t id, uint32_t data[2]) //This is where we go when a defined CAN message is received.
 {
-   
+   //DigIo::led_out.Toggle();
      for(int i =0; i<4; i++){
 		if(devices[i]->RequiresCAN()){
 		devices[i]->ProcessCANMessage(id, data); //only start 1mS task if needed!
-		break;
+		//break;
 		}
 	}
 	
@@ -204,6 +204,12 @@ extern "C" int main(void)
 
 
     can = &c; // FIXME: What about CAN2?
+	
+	c.SetReceiveCallback(CanCallback);
+	c2.SetReceiveCallback(CanCallback);
+	
+    //c.RegisterUserMessage(0x521);//ISA MSG
+
 
     Stm32Scheduler s(TIM3); //We never exit main so it's ok to put it on stack
     scheduler = &s;

@@ -61,6 +61,14 @@ class ISA_Shunt: public vcu_device{
 			//init DMA etc? 
 			
 			//turn on power to inverter?
+			m_can_ptr->RegisterUserMessage(0x521);
+			m_can_ptr->RegisterUserMessage(0x522);
+			m_can_ptr->RegisterUserMessage(0x523);
+			m_can_ptr->RegisterUserMessage(0x524);
+			m_can_ptr->RegisterUserMessage(0x525);
+			m_can_ptr->RegisterUserMessage(0x526);
+			m_can_ptr->RegisterUserMessage(0x527);
+			m_can_ptr->RegisterUserMessage(0x528);
 			
 			m_state = ISA_STATES::START_CONFIGIRATION;
 			
