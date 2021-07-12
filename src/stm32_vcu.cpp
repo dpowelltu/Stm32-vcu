@@ -63,15 +63,16 @@ enum DEVICE_TYPES{
 	SHUNT	
 };
 
+#define NUM_DEVICES 3
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static void Ms200Task(void)
 {
   
-  for(int i =0; i<4; i++){
+  for(int i =0; i<NUM_DEVICES; i++){
 		if(devices[i]->m_time_base==200){
 		devices[i]->Update(); //only start 1mS task if needed!
-		break;
+		
 		}
 	}
 }
@@ -83,14 +84,14 @@ static void Ms200Task(void)
 
 static void Ms100Task(void)
 {
-    DigIo::led_out.Toggle();
+    
     iwdg_reset();
    
-     for(int i =0; i<4; i++){
+     for(int i =0; i<NUM_DEVICES; i++){
 		if(devices[i]->m_time_base==100){
-		devices[i]->Update(); //only start 1mS task if needed!
-		break;
-		}
+			devices[i]->Update(); 
+			
+			}
 	}
 	
 }
@@ -98,10 +99,10 @@ static void Ms100Task(void)
 
 static void Ms10Task(void)
 {
-     for(int i =0; i<4; i++){
+     for(int i =0; i<NUM_DEVICES; i++){
 		if(devices[i]->m_time_base==10){
 		devices[i]->Update(); //only start 1mS task if needed!
-		break;
+		
 		}
 	}
 }
@@ -109,10 +110,10 @@ static void Ms10Task(void)
 
 static void Ms1Task(void)
 {
-   for(int i =0; i<4; i++){
+   for(int i =0; i<NUM_DEVICES; i++){
 		if(devices[i]->m_time_base==1){
 		devices[i]->Update(); //only start 1mS task if needed!
-		break;
+		
 		}
 	}
    
@@ -229,9 +230,9 @@ extern "C" int main(void)
 	//The VCU Task will need objects for the following: Vehicle, Inverter, Charger
 	
 	//myCharger.INIT();
-	//for(int i =0; i<4; i++)
+	for(int i =0; i<NUM_DEVICES; i++)
 	//	if(devices[i]!=0)
-	//		devices[i]->INIT();
+			devices[i]->INIT();
 	
 	myInverter.setTorque(0);
 	

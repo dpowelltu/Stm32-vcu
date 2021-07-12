@@ -3,6 +3,7 @@
 
 #include "vcu_device.h"
 
+
 enum class CHARGER_STATES{
 			IDLE,
 			INIT,
@@ -25,6 +26,7 @@ class OutlanderCharger: public vcu_device{
 		uint16_t m_bat_voltage;
 		uint16_t m_supply_voltage;
 		uint16_t m_charger_can_alive;
+		uint16_t m_charger_update;
 		uint16_t m_evse_pilot;
 		
 		uint16_t m_max_battery_voltage;
@@ -51,7 +53,7 @@ class OutlanderCharger: public vcu_device{
 		
 		bool RequiresStart()override{ 
 		
-			if(AnaIn::throttle1.Get()<200){//should be another analogue input, this is just for test! 
+			if(AnaIn::uaux.Get()<200){//should be another analogue input, this is just for test! 
 				return true;
 			}
 			else{

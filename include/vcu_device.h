@@ -16,6 +16,8 @@
 #include "hwinit.h"
 #include "anain.h"
 
+#include "params.h"
+
 class vcu_device
 {
 

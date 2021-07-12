@@ -4,8 +4,9 @@
 void OutlanderCharger::INIT(){
    // printf("init");
    //AddCANID(0x1DA); 
-   
-   
+   m_charger_can_alive = 0;
+   m_charger_update = 0;
+   m_state = CHARGER_STATES::IDLE;
    
 }
 
@@ -52,16 +53,16 @@ void OutlanderCharger::Update(void){
 	static uint16_t x, timer, m_prox_state, prox, m_count, slow_flag_counter, slow_flag;
 
 	if(x==0){
-		x = 1;
-		DigIo::prec_out.Set();//commence precharge
+		x = 10;
+		DigIo::led_out.Toggle();
 	}
 	else{
-		x = 0;
-		DigIo::prec_out.Clear();//commence precharg		
+		x--;
 	}
 	
 	
 #if 1
+
 
   if(m_count==5){
     sendChargerSPData(m_charger_voltage_sp,m_charger_curret_sp );
@@ -72,7 +73,7 @@ void OutlanderCharger::Update(void){
 
   if(m_count > 10){
     
-   
+    Param::SetInt(Param::charger_state, (int)m_state);
     /*
     if(flag){
         flag = 0;

@@ -126,6 +126,7 @@
     VALUE_ENTRY(CCS_ConStat,   ONOFF,   2109 ) \
     VALUE_ENTRY(hvChg,   ONOFF,   2111 ) \
     VALUE_ENTRY(cpuload,      "%",     2035 ) \
+	VALUE_ENTRY(charger_state, " ", 2036)  \
 
 //Next value Id: 2080
 
